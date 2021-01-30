@@ -1,0 +1,49 @@
+#!/usr/bin/env sh
+
+filename=`date +%d-%m-%y_%H:%M`
+world="world2"
+
+# if the share is mounted, the minecraft service file will exist and that will tell us we can simply copy the save directory to the server, otherwise we have to mount the share first before we can do the backup.
+
+if [ -f "/home/ej/saves/.minecraft.service" ];
+then
+	sudo -i -u minecraft screen -p 0 -X eval 'stuff "say Saving game..."\015'
+	sudo -i -u minecraft screen -p 0 -X eval 'stuff "save-all"\015'
+	cp -r /opt/minecraft/survival1/$world/ /home/ej/saves/$filename
+	
+	if [ -d "/home/ej/saves/$filename" ];
+	then
+		say='stuff "say Synced to NFS-04:exports/NFS-04/share/Games/minecraftsaves/'$filename'"\015'
+		sudo -i -u minecraft screen -p 0 -X eval "$say"
+		cd /home/ej/saves/
+		sudo rm -rf `ls -tr | awk 'NR==1'`
+
+	else
+		sudo -i -u minecraft screen -p 0 -X eval 'stuff "say Unable to find save directory on server. Tell Misfit about this, something is wrong!"\015'
+	fi
+else
+	cd /home/ej/
+	sudo mount -t nfs 192.168.1.109:/exports/NFS-04/share/Games/saves/ /home/ej/saves > /dev/null 2>&1
+	
+	if [ -f "/home/ej/saves/.minecraft.service" ];
+	then
+		sudo -i -u minecraft screen -p 0 -X eval 'stuff "say Saving game..."\015'
+		sudo -i -u minecraft screen -p 0 -X eval 'stuff "save-all"\015'
+		cp -r /opt/minecraft/survival1/$world/ /home/ej/saves/$filename
+		
+		if [ -d "/home/ej/saves/$filename" ];
+		then
+			say='stuff "say Synced to NFS-04:exports/NFS-04/share/Games/minecraftsaves/'$filename'"\015'
+			sudo -i -u minecraft screen -p 0 -X eval "$say"
+			cd /home/ej/saves/
+			sudo rm -rf `ls -tr | awk 'NR==1'`
+		else
+			sudo -i -u minecraft screen -p 0 -X eval 'stuff "say Unable to find save directory on server. Tell Misfit about this, something is wrong!"\015'
+		fi
+		cd /home/ej/
+		sudo umount saves
+	else
+		sudo -i -u minecraft screen -p -0 -X eval 'stuff "say Unable to mount share (NFS-04), therefore cannot save world backup to backup directory. You are currently playing without a recently saved game. Tell Misfit about this, something is wrong!"\015'
+	fi
+fi
+	
